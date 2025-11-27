@@ -3,8 +3,16 @@
   "version": "1.0.0",
   "description": "Generate kubeconfig files from Rancher managed clusters",
   "main": "main.js",
-  "author": "Rancher Kubeconfig Proxy",
+  "author": {
+    "name": "Rancher Kubeconfig Proxy",
+    "email": "noreply@example.com"
+  },
   "license": "MIT",
+  "homepage": "https://github.com/dropte/rancher-kubeconfig-proxy",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dropte/rancher-kubeconfig-proxy.git"
+  },
   "scripts": {
     "start": "electron .",
     "build": "electron-builder",
@@ -53,7 +61,8 @@
     "linux": {
       "target": ["AppImage", "deb", "rpm"],
       "category": "Development",
-      "icon": "build/icons"
+      "icon": "build/icons",
+      "maintainer": "noreply@example.com"
     },
     "nsis": {
       "oneClick": false,
