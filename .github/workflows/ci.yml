@@ -116,22 +116,30 @@ jobs:
           cache: 'npm'
           cache-dependency-path: electron/package-lock.json
 
-      - name: Build Go backend (Linux/macOS)
-        if: matrix.platform != 'windows'
+      - name: Build Go backend (Linux)
+        if: matrix.platform == 'linux'
         run: |
-          mkdir -p bin/${{ matrix.platform }}
-          GOOS=${{ matrix.platform }} GOARCH=${{ matrix.goarch }} \
+          mkdir -p bin/linux
+          GOOS=linux GOARCH=${{ matrix.goarch }} \
             go build -ldflags "-X github.com/rancher-kubeconfig-proxy/cmd.Version=${{ github.sha }}" \
-            -o bin/${{ matrix.platform }}/rancher-kubeconfig-proxy .
+            -o bin/linux/rancher-kubeconfig-proxy .
+
+      - name: Build Go backend (macOS)
+        if: matrix.platform == 'darwin'
+        run: |
+          mkdir -p bin/mac
+          GOOS=darwin GOARCH=${{ matrix.goarch }} \
+            go build -ldflags "-X github.com/rancher-kubeconfig-proxy/cmd.Version=${{ github.sha }}" \
+            -o bin/mac/rancher-kubeconfig-proxy .
 
       - name: Build Go backend (Windows)
         if: matrix.platform == 'windows'
         shell: bash
         run: |
-          mkdir -p bin/win32
+          mkdir -p bin/win
           GOOS=windows GOARCH=${{ matrix.goarch }} \
             go build -ldflags "-X github.com/rancher-kubeconfig-proxy/cmd.Version=${{ github.sha }}" \
-            -o bin/win32/rancher-kubeconfig-proxy.exe .
+            -o bin/win/rancher-kubeconfig-proxy.exe .
 
       - name: Install Electron dependencies
         working-directory: electron
