@@ -167,19 +167,28 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Build Go backend (Intel)
+      - name: Build Go backend
         run: |
-          mkdir -p bin/darwin
-          GOOS=darwin GOARCH=amd64 go build \
-            -ldflags "-X github.com/rancher-kubeconfig-proxy/cmd.Version=${{ needs.create-release.outputs.version }}" \
-            -o bin/darwin/rancher-kubeconfig-proxy .
-
-      - name: Build Go backend (Apple Silicon)
-        run: |
-          mkdir -p bin/darwin-arm64
+          mkdir -p bin/mac
           GOOS=darwin GOARCH=arm64 go build \
             -ldflags "-X github.com/rancher-kubeconfig-proxy/cmd.Version=${{ needs.create-release.outputs.version }}" \
-            -o bin/darwin-arm64/rancher-kubeconfig-proxy .
+            -o bin/mac/rancher-kubeconfig-proxy .
+
+      - name: Import Code Signing Certificate
+        if: env.APPLE_CERTIFICATE != ''
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          echo "$APPLE_CERTIFICATE" | base64 --decode > $RUNNER_TEMP/certificate.p12
+          security import $RUNNER_TEMP/certificate.p12 -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
       - name: Install Electron dependencies
         working-directory: electron
@@ -190,6 +199,27 @@ jobs:
         run: npm run build:mac
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.APPLE_CERTIFICATE }}
+          CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+
+      - name: Notarize DMG
+        if: env.APPLE_ID != ''
+        working-directory: electron
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          DMG_PATH=$(find dist -name "*.dmg" -type f | head -1)
+          if [ -n "$DMG_PATH" ]; then
+            echo "Notarizing $DMG_PATH..."
+            xcrun notarytool submit "$DMG_PATH" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+              --team-id "$APPLE_TEAM_ID" \
+              --wait || echo "Notarization failed, continuing..."
+            xcrun stapler staple "$DMG_PATH" || echo "Stapling failed, continuing..."
+          fi
 
       - name: Upload DMG
         uses: actions/upload-release-asset@v1
@@ -222,10 +252,10 @@ jobs:
       - name: Build Go backend
         shell: bash
         run: |
-          mkdir -p bin/win32
+          mkdir -p bin/win
           GOOS=windows GOARCH=amd64 go build \
             -ldflags "-X github.com/rancher-kubeconfig-proxy/cmd.Version=${{ needs.create-release.outputs.version }}" \
-            -o bin/win32/rancher-kubeconfig-proxy.exe .
+            -o bin/win/rancher-kubeconfig-proxy.exe .
 
       - name: Install Electron dependencies
         working-directory: electron
