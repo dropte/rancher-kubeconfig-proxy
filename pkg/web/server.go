@@ -307,16 +307,42 @@ const indexHTML = `<!DOCTYPE html>
     <title>Rancher Kubeconfig Generator</title>
     <style>
         :root {
-            --primary-color: #2563eb;
-            --primary-hover: #1d4ed8;
-            --success-color: #16a34a;
-            --warning-color: #ca8a04;
-            --error-color: #dc2626;
-            --bg-color: #f8fafc;
-            --card-bg: #ffffff;
-            --text-color: #1e293b;
-            --text-muted: #64748b;
-            --border-color: #e2e8f0;
+            --bg-primary: #1e1e1e;
+            --bg-secondary: #252526;
+            --bg-tertiary: #2d2d30;
+            --bg-hover: #3c3c3c;
+            --bg-active: #094771;
+            --text-primary: #cccccc;
+            --text-secondary: #969696;
+            --text-bright: #ffffff;
+            --accent: #0078d4;
+            --accent-hover: #1c8ae6;
+            --success: #4ec9b0;
+            --warning: #dcdcaa;
+            --error: #f14c4c;
+            --border: #3c3c3c;
+            --input-bg: #3c3c3c;
+            --sidebar-width: 320px;
+        }
+
+        @media (prefers-color-scheme: light) {
+            :root {
+                --bg-primary: #ffffff;
+                --bg-secondary: #f3f3f3;
+                --bg-tertiary: #e8e8e8;
+                --bg-hover: #e0e0e0;
+                --bg-active: #cce4f7;
+                --text-primary: #333333;
+                --text-secondary: #666666;
+                --text-bright: #000000;
+                --accent: #0078d4;
+                --accent-hover: #106ebe;
+                --success: #107c10;
+                --warning: #ca8a00;
+                --error: #d32f2f;
+                --border: #d4d4d4;
+                --input-bg: #ffffff;
+            }
         }
 
         * {
@@ -326,558 +352,749 @@ const indexHTML = `<!DOCTYPE html>
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            line-height: 1.6;
-            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 13px;
+            line-height: 1.4;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 2rem;
+        /* Toolbar */
+        .toolbar {
+            height: 38px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            gap: 8px;
+            -webkit-app-region: drag;
+            flex-shrink: 0;
         }
 
-        header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        header h1 {
-            font-size: 1.875rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-
-        header p {
-            color: var(--text-muted);
-        }
-
-        .card {
-            background: var(--card-bg);
-            border-radius: 0.75rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .card h2 {
-            font-size: 1.125rem;
+        .toolbar-title {
             font-weight: 600;
-            margin-bottom: 1rem;
-            padding-bottom: 0.75rem;
-            border-bottom: 1px solid var(--border-color);
+            font-size: 13px;
+            color: var(--text-bright);
+            margin-right: auto;
+        }
+
+        .toolbar-btn {
+            -webkit-app-region: no-drag;
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .toolbar-btn:hover {
+            background: var(--accent-hover);
+        }
+
+        .toolbar-btn:disabled {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            cursor: not-allowed;
+        }
+
+        .toolbar-btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .toolbar-btn-secondary:hover {
+            background: var(--bg-hover);
+        }
+
+        /* Main Layout */
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 12px;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .form-section {
+            margin-bottom: 16px;
+        }
+
+        .form-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
         }
 
         .form-group {
-            margin-bottom: 1rem;
+            margin-bottom: 12px;
         }
 
         .form-group label {
             display: block;
-            font-weight: 500;
-            margin-bottom: 0.375rem;
-            font-size: 0.875rem;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
         }
 
         .form-group input[type="text"],
         .form-group input[type="password"],
         .form-group input[type="url"] {
             width: 100%;
-            padding: 0.625rem 0.875rem;
-            border: 1px solid var(--border-color);
-            border-radius: 0.5rem;
-            font-size: 0.875rem;
-            transition: border-color 0.15s, box-shadow 0.15s;
+            padding: 6px 8px;
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            color: var(--text-primary);
+            font-size: 12px;
+            font-family: inherit;
         }
 
         .form-group input:focus {
             outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+            border-color: var(--accent);
         }
 
-        .form-group small {
-            display: block;
-            color: var(--text-muted);
-            font-size: 0.75rem;
-            margin-top: 0.25rem;
+        .form-group input::placeholder {
+            color: var(--text-secondary);
         }
 
-        .checkbox-group {
+        /* Segmented Control */
+        .segmented-control {
             display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            padding: 2px;
+            margin-bottom: 12px;
         }
 
-        .checkbox-group input[type="checkbox"] {
-            width: 1rem;
-            height: 1rem;
-        }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0.625rem 1.25rem;
-            font-size: 0.875rem;
-            font-weight: 500;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            transition: all 0.15s;
+        .segment-btn {
+            flex: 1;
+            padding: 5px 8px;
             border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 3px;
+            transition: all 0.15s;
         }
 
-        .btn-primary {
-            background-color: var(--primary-color);
+        .segment-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .segment-btn.active {
+            background: var(--accent);
             color: white;
         }
 
-        .btn-primary:hover {
-            background-color: var(--primary-hover);
+        .auth-panel {
+            display: none;
         }
 
-        .btn-primary:disabled {
-            background-color: var(--text-muted);
-            cursor: not-allowed;
+        .auth-panel.active {
+            display: block;
         }
 
-        .btn-secondary {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            border: 1px solid var(--border-color);
-        }
-
-        .btn-secondary:hover {
-            background-color: var(--border-color);
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 0.75rem;
-            margin-top: 1rem;
-        }
-
-        .alert {
-            padding: 0.875rem 1rem;
-            border-radius: 0.5rem;
-            margin-bottom: 1rem;
-            font-size: 0.875rem;
-        }
-
-        .alert-error {
-            background-color: #fef2f2;
-            border: 1px solid #fecaca;
-            color: var(--error-color);
-        }
-
-        .alert-success {
-            background-color: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            color: var(--success-color);
-        }
-
-        .cluster-list {
-            border: 1px solid var(--border-color);
-            border-radius: 0.5rem;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        .cluster-item {
+        /* Checkbox */
+        .checkbox-row {
             display: flex;
             align-items: center;
-            padding: 0.75rem 1rem;
-            border-bottom: 1px solid var(--border-color);
+            gap: 8px;
+            padding: 4px 0;
         }
 
-        .cluster-item:last-child {
-            border-bottom: none;
+        .checkbox-row input[type="checkbox"] {
+            width: 14px;
+            height: 14px;
+            accent-color: var(--accent);
         }
 
-        .cluster-item input[type="checkbox"] {
-            margin-right: 0.75rem;
+        .checkbox-row label {
+            font-size: 12px;
+            color: var(--text-primary);
+            cursor: pointer;
+            margin: 0;
         }
 
-        .cluster-info {
+        /* Main Content */
+        .content {
             flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .content-header {
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .content-title {
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--text-bright);
+        }
+
+        .cluster-count {
+            font-size: 11px;
+            color: var(--text-secondary);
+            background: var(--bg-tertiary);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        /* Table */
+        .table-container {
+            flex: 1;
+            overflow: auto;
+        }
+
+        .cluster-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .cluster-table th {
+            position: sticky;
+            top: 0;
+            background: var(--bg-tertiary);
+            text-align: left;
+            padding: 8px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .cluster-table th:first-child {
+            width: 40px;
+            text-align: center;
+        }
+
+        .cluster-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
+        .cluster-table tr:hover {
+            background: var(--bg-hover);
+        }
+
+        .cluster-table tr.selected {
+            background: var(--bg-active);
+        }
+
+        .cluster-table td:first-child {
+            text-align: center;
         }
 
         .cluster-name {
             font-weight: 500;
+            color: var(--text-bright);
         }
 
-        .cluster-meta {
-            font-size: 0.75rem;
-            color: var(--text-muted);
+        .cluster-id {
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
         }
 
-        .cluster-state {
-            display: inline-block;
-            padding: 0.125rem 0.5rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
             font-weight: 500;
         }
 
-        .state-active {
-            background-color: #dcfce7;
-            color: var(--success-color);
+        .status-badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
         }
 
-        .state-inactive {
-            background-color: #fef9c3;
-            color: var(--warning-color);
+        .status-active {
+            background: rgba(78, 201, 176, 0.15);
+            color: var(--success);
         }
 
-        .state-error {
-            background-color: #fef2f2;
-            color: var(--error-color);
+        .status-active::before {
+            background: var(--success);
         }
 
-        .loading {
+        .status-inactive {
+            background: rgba(220, 220, 170, 0.15);
+            color: var(--warning);
+        }
+
+        .status-inactive::before {
+            background: var(--warning);
+        }
+
+        .status-error {
+            background: rgba(241, 76, 76, 0.15);
+            color: var(--error);
+        }
+
+        .status-error::before {
+            background: var(--error);
+        }
+
+        /* Empty State */
+        .empty-state {
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 2rem;
-            color: var(--text-muted);
+            height: 100%;
+            color: var(--text-secondary);
+            text-align: center;
+            padding: 40px;
         }
 
-        .spinner {
-            width: 1.5rem;
-            height: 1.5rem;
-            border: 2px solid var(--border-color);
-            border-top-color: var(--primary-color);
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .empty-state-text {
+            font-size: 13px;
+            max-width: 300px;
+        }
+
+        /* Loading */
+        .loading-overlay {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .loading-overlay.visible {
+            display: flex;
+        }
+
+        .loading-spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
-            margin-right: 0.5rem;
         }
 
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
 
-        .hidden {
-            display: none !important;
-        }
-
-        .select-all {
-            padding: 0.5rem 1rem;
-            background-color: var(--bg-color);
-            border-bottom: 1px solid var(--border-color);
-            font-size: 0.875rem;
-        }
-
-        .auth-tabs {
+        /* Status Bar */
+        .status-bar {
+            height: 24px;
+            background: var(--bg-tertiary);
+            border-top: 1px solid var(--border);
             display: flex;
-            gap: 0;
-            margin-bottom: 1rem;
-            border-bottom: 1px solid var(--border-color);
+            align-items: center;
+            padding: 0 12px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            flex-shrink: 0;
         }
 
-        .auth-tab {
-            padding: 0.5rem 1rem;
-            cursor: pointer;
-            border: none;
-            background: none;
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: var(--text-muted);
-            border-bottom: 2px solid transparent;
-            margin-bottom: -1px;
+        .status-bar-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
-        .auth-tab:hover {
-            color: var(--text-color);
+        .status-bar-item::after {
+            content: '|';
+            margin: 0 8px;
+            opacity: 0.3;
         }
 
-        .auth-tab.active {
-            color: var(--primary-color);
-            border-bottom-color: var(--primary-color);
-        }
-
-        .auth-content {
+        .status-bar-item:last-child::after {
             display: none;
         }
 
-        .auth-content.active {
-            display: block;
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-secondary);
         }
 
-        footer {
-            text-align: center;
-            padding: 1rem;
-            color: var(--text-muted);
-            font-size: 0.875rem;
+        .status-dot.connected {
+            background: var(--success);
+        }
+
+        .status-dot.error {
+            background: var(--error);
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px 20px;
+            font-size: 13px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .toast.visible {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            border-left: 3px solid var(--success);
+        }
+
+        .toast.error {
+            border-left: 3px solid var(--error);
+        }
+
+        .hidden {
+            display: none !important;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Rancher Kubeconfig Generator</h1>
-            <p>Generate kubeconfig files from your Rancher managed clusters</p>
-        </header>
+    <!-- Toolbar -->
+    <div class="toolbar">
+        <span class="toolbar-title">Rancher Kubeconfig Generator</span>
+        <button class="toolbar-btn toolbar-btn-secondary" id="refreshBtn" onclick="fetchClusters()" disabled>
+            ↻ Refresh
+        </button>
+        <button class="toolbar-btn" id="generateBtn" onclick="generateKubeconfig()" disabled>
+            ⬇ Generate Kubeconfig
+        </button>
+    </div>
 
-        <div id="errorAlert" class="alert alert-error hidden"></div>
-        <div id="successAlert" class="alert alert-success hidden"></div>
-
-        <div class="card">
-            <h2>Rancher Connection</h2>
-            <div class="form-group">
-                <label for="rancherUrl">Rancher URL</label>
-                <input type="url" id="rancherUrl" placeholder="https://rancher.example.com">
-                <small>The URL of your Rancher server</small>
-            </div>
-
-            <div class="form-group">
-                <label>Authentication Method</label>
-                <div class="auth-tabs">
-                    <button type="button" class="auth-tab active" onclick="switchAuthMethod('token')">API Token</button>
-                    <button type="button" class="auth-tab" onclick="switchAuthMethod('password')">Username/Password</button>
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">Connection Settings</div>
+            <div class="sidebar-content">
+                <div class="form-section">
+                    <div class="form-group">
+                        <label>Rancher URL</label>
+                        <input type="url" id="rancherUrl" placeholder="https://rancher.example.com">
+                    </div>
                 </div>
-            </div>
 
-            <div id="authToken" class="auth-content active">
-                <div class="form-group">
-                    <label for="token">API Token</label>
-                    <input type="password" id="token" placeholder="token-xxxxx:yyyyyyy">
-                    <small>Your Rancher API token (format: access_key:secret_key)</small>
-                </div>
-            </div>
+                <div class="form-section">
+                    <div class="form-section-title">Authentication</div>
+                    <div class="segmented-control">
+                        <button class="segment-btn active" onclick="switchAuthMethod('token', this)">API Token</button>
+                        <button class="segment-btn" onclick="switchAuthMethod('password', this)">Password</button>
+                    </div>
 
-            <div id="authPassword" class="auth-content">
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" placeholder="admin">
-                    <small>Your Rancher username</small>
-                </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" placeholder="Enter your password">
-                    <small>Your Rancher password</small>
-                </div>
-            </div>
+                    <div id="authToken" class="auth-panel active">
+                        <div class="form-group">
+                            <label>API Token</label>
+                            <input type="password" id="token" placeholder="token-xxxxx:yyyyyyy">
+                        </div>
+                    </div>
 
-            <div class="form-group">
-                <label for="clusterPrefix">Cluster Name Prefix</label>
-                <input type="text" id="clusterPrefix" placeholder="prod-">
-                <small>Optional prefix to add to cluster names in the kubeconfig</small>
-            </div>
-            <div class="form-group">
-                <div class="checkbox-group">
-                    <input type="checkbox" id="insecureSkipTls">
-                    <label for="insecureSkipTls">Skip TLS certificate verification</label>
+                    <div id="authPassword" class="auth-panel">
+                        <div class="form-group">
+                            <label>Username</label>
+                            <input type="text" id="username" placeholder="admin">
+                        </div>
+                        <div class="form-group">
+                            <label>Password</label>
+                            <input type="password" id="password" placeholder="••••••••">
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="btn-group">
-                <button class="btn btn-primary" id="fetchClustersBtn" onclick="fetchClusters()">
-                    Fetch Clusters
+
+                <div class="form-section">
+                    <div class="form-section-title">Options</div>
+                    <div class="form-group">
+                        <label>Context Prefix</label>
+                        <input type="text" id="clusterPrefix" placeholder="Optional prefix">
+                    </div>
+                    <div class="checkbox-row">
+                        <input type="checkbox" id="insecureSkipTls">
+                        <label for="insecureSkipTls">Skip TLS verification</label>
+                    </div>
+                </div>
+
+                <button class="toolbar-btn" style="width: 100%; justify-content: center;" id="connectBtn" onclick="fetchClusters()">
+                    Connect to Rancher
                 </button>
             </div>
         </div>
 
-        <div class="card hidden" id="clustersCard">
-            <h2>Available Clusters</h2>
-            <div id="loadingClusters" class="loading hidden">
-                <div class="spinner"></div>
-                <span>Loading clusters...</span>
+        <!-- Content -->
+        <div class="content">
+            <div class="content-header">
+                <span class="content-title">Clusters</span>
+                <span class="cluster-count" id="clusterCount">0 clusters</span>
             </div>
-            <div id="clusterListContainer" class="hidden">
-                <div class="select-all">
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
-                        <label for="selectAll">Select all active clusters</label>
-                    </div>
+
+            <div class="table-container" id="tableContainer">
+                <!-- Empty State -->
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-state-icon">☁</div>
+                    <div class="empty-state-title">No clusters loaded</div>
+                    <div class="empty-state-text">Enter your Rancher connection details and click "Connect to Rancher" to get started.</div>
                 </div>
-                <div class="cluster-list" id="clusterList"></div>
+
+                <!-- Cluster Table -->
+                <table class="cluster-table hidden" id="clusterTable">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
+                            <th>Name</th>
+                            <th>ID</th>
+                            <th>Provider</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="clusterTableBody">
+                    </tbody>
+                </table>
             </div>
-            <div class="btn-group">
-                <button class="btn btn-primary" id="generateBtn" onclick="generateKubeconfig()" disabled>
-                    Generate Kubeconfig
-                </button>
-                <button class="btn btn-secondary" onclick="fetchClusters()">
-                    Refresh
-                </button>
+
+            <!-- Loading Overlay -->
+            <div class="loading-overlay" id="loadingOverlay">
+                <div class="loading-spinner"></div>
             </div>
         </div>
     </div>
 
-    <footer>
-        Rancher Kubeconfig Proxy
-    </footer>
+    <!-- Status Bar -->
+    <div class="status-bar">
+        <div class="status-bar-item">
+            <span class="status-dot" id="connectionStatus"></span>
+            <span id="connectionText">Not connected</span>
+        </div>
+        <div class="status-bar-item" id="selectionStatus">
+            0 selected
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
 
     <script>
         let clusters = [];
         let currentAuthMethod = 'token';
+        let isConnected = false;
 
-        function switchAuthMethod(method) {
+        function switchAuthMethod(method, btn) {
             currentAuthMethod = method;
-
-            // Update tab styling
-            document.querySelectorAll('.auth-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            event.target.classList.add('active');
-
-            // Show/hide auth content
-            document.getElementById('authToken').classList.remove('active');
-            document.getElementById('authPassword').classList.remove('active');
-
-            if (method === 'token') {
-                document.getElementById('authToken').classList.add('active');
-            } else {
-                document.getElementById('authPassword').classList.add('active');
-            }
+            document.querySelectorAll('.segment-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('authToken').classList.toggle('active', method === 'token');
+            document.getElementById('authPassword').classList.toggle('active', method === 'password');
         }
 
         function getAuthCredentials() {
             if (currentAuthMethod === 'token') {
-                return {
-                    token: document.getElementById('token').value.trim(),
-                    username: '',
-                    password: ''
-                };
-            } else {
-                return {
-                    token: '',
-                    username: document.getElementById('username').value.trim(),
-                    password: document.getElementById('password').value.trim()
-                };
+                return { token: document.getElementById('token').value.trim(), username: '', password: '' };
             }
+            return {
+                token: '',
+                username: document.getElementById('username').value.trim(),
+                password: document.getElementById('password').value.trim()
+            };
         }
 
-        function validateAuth() {
-            const creds = getAuthCredentials();
-            if (currentAuthMethod === 'token') {
-                if (!creds.token) {
-                    showError('Please enter your API token');
-                    return false;
-                }
-            } else {
-                if (!creds.username || !creds.password) {
-                    showError('Please enter both username and password');
-                    return false;
-                }
-            }
-            return true;
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast ' + type + ' visible';
+            setTimeout(() => toast.classList.remove('visible'), 3000);
         }
 
-        function showError(message) {
-            const alert = document.getElementById('errorAlert');
-            alert.textContent = message;
-            alert.classList.remove('hidden');
-            document.getElementById('successAlert').classList.add('hidden');
+        function setLoading(loading) {
+            document.getElementById('loadingOverlay').classList.toggle('visible', loading);
+            document.getElementById('connectBtn').disabled = loading;
         }
 
-        function showSuccess(message) {
-            const alert = document.getElementById('successAlert');
-            alert.textContent = message;
-            alert.classList.remove('hidden');
-            document.getElementById('errorAlert').classList.add('hidden');
+        function updateConnectionStatus(connected, text) {
+            isConnected = connected;
+            document.getElementById('connectionStatus').classList.toggle('connected', connected);
+            document.getElementById('connectionStatus').classList.toggle('error', !connected && text.includes('Error'));
+            document.getElementById('connectionText').textContent = text;
+            document.getElementById('refreshBtn').disabled = !connected;
         }
 
-        function hideAlerts() {
-            document.getElementById('errorAlert').classList.add('hidden');
-            document.getElementById('successAlert').classList.add('hidden');
+        function updateSelectionStatus() {
+            const selected = getSelectedClusters();
+            document.getElementById('selectionStatus').textContent = selected.length + ' selected';
+            document.getElementById('generateBtn').disabled = selected.length === 0;
         }
 
-        function getStateClass(state) {
-            if (state === 'active') return 'state-active';
-            if (state === 'error' || state === 'unavailable') return 'state-error';
-            return 'state-inactive';
+        function getStatusClass(state) {
+            if (state === 'active') return 'status-active';
+            if (state === 'error' || state === 'unavailable') return 'status-error';
+            return 'status-inactive';
         }
 
         async function fetchClusters() {
-            hideAlerts();
-
             const rancherUrl = document.getElementById('rancherUrl').value.trim();
+            const creds = getAuthCredentials();
             const insecureSkipTls = document.getElementById('insecureSkipTls').checked;
 
             if (!rancherUrl) {
-                showError('Please enter the Rancher URL');
+                showToast('Please enter the Rancher URL', 'error');
                 return;
             }
 
-            if (!validateAuth()) {
+            if (currentAuthMethod === 'token' && !creds.token) {
+                showToast('Please enter your API token', 'error');
                 return;
             }
 
-            const creds = getAuthCredentials();
+            if (currentAuthMethod === 'password' && (!creds.username || !creds.password)) {
+                showToast('Please enter username and password', 'error');
+                return;
+            }
 
-            const clustersCard = document.getElementById('clustersCard');
-            const loadingClusters = document.getElementById('loadingClusters');
-            const clusterListContainer = document.getElementById('clusterListContainer');
-            const fetchBtn = document.getElementById('fetchClustersBtn');
-
-            clustersCard.classList.remove('hidden');
-            loadingClusters.classList.remove('hidden');
-            clusterListContainer.classList.add('hidden');
-            fetchBtn.disabled = true;
+            setLoading(true);
+            updateConnectionStatus(false, 'Connecting...');
 
             try {
                 const response = await fetch('/api/clusters', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        rancherUrl: rancherUrl,
-                        token: creds.token,
-                        username: creds.username,
-                        password: creds.password,
-                        insecureSkipTlsVerify: insecureSkipTls,
-                    }),
+                        rancherUrl, token: creds.token, username: creds.username,
+                        password: creds.password, insecureSkipTlsVerify: insecureSkipTls
+                    })
                 });
 
                 const result = await response.json();
 
                 if (!result.success) {
-                    showError(result.error || 'Failed to fetch clusters');
-                    clustersCard.classList.add('hidden');
+                    updateConnectionStatus(false, 'Connection failed');
+                    showToast(result.error || 'Failed to connect', 'error');
                     return;
                 }
 
                 clusters = result.data || [];
-                renderClusterList();
-                clusterListContainer.classList.remove('hidden');
-                showSuccess('Found ' + clusters.length + ' cluster(s)');
+                renderClusterTable();
+                updateConnectionStatus(true, 'Connected to ' + new URL(rancherUrl).hostname);
+                showToast('Found ' + clusters.length + ' cluster(s)', 'success');
 
             } catch (error) {
-                showError('Failed to connect to server: ' + error.message);
-                clustersCard.classList.add('hidden');
+                updateConnectionStatus(false, 'Error: ' + error.message);
+                showToast('Connection failed: ' + error.message, 'error');
             } finally {
-                loadingClusters.classList.add('hidden');
-                fetchBtn.disabled = false;
+                setLoading(false);
             }
         }
 
-        function renderClusterList() {
-            const clusterList = document.getElementById('clusterList');
-            clusterList.innerHTML = '';
+        function renderClusterTable() {
+            const tbody = document.getElementById('clusterTableBody');
+            const table = document.getElementById('clusterTable');
+            const emptyState = document.getElementById('emptyState');
+
+            tbody.innerHTML = '';
+
+            if (clusters.length === 0) {
+                table.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                document.getElementById('clusterCount').textContent = '0 clusters';
+                return;
+            }
+
+            table.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+            document.getElementById('clusterCount').textContent = clusters.length + ' cluster' + (clusters.length !== 1 ? 's' : '');
 
             clusters.forEach((cluster, index) => {
-                const div = document.createElement('div');
-                div.className = 'cluster-item';
-                div.innerHTML = ` + "`" + `
-                    <input type="checkbox" id="cluster-${index}"
-                           ${cluster.state === 'active' ? 'checked' : ''}
-                           ${cluster.state !== 'active' ? 'disabled' : ''}
-                           onchange="updateGenerateButton()">
-                    <div class="cluster-info">
-                        <div class="cluster-name">${escapeHtml(cluster.name)}</div>
-                        <div class="cluster-meta">
-                            ID: ${escapeHtml(cluster.id)} | Provider: ${escapeHtml(cluster.provider || 'N/A')}
-                        </div>
-                    </div>
-                    <span class="cluster-state ${getStateClass(cluster.state)}">${escapeHtml(cluster.state)}</span>
+                const tr = document.createElement('tr');
+                const isActive = cluster.state === 'active';
+                tr.innerHTML = ` + "`" + `
+                    <td><input type="checkbox" id="cluster-${index}" ${isActive ? 'checked' : ''} ${!isActive ? 'disabled' : ''} onchange="onClusterSelect(${index})"></td>
+                    <td><span class="cluster-name">${escapeHtml(cluster.name)}</span></td>
+                    <td><span class="cluster-id">${escapeHtml(cluster.id)}</span></td>
+                    <td>${escapeHtml(cluster.provider || '—')}</td>
+                    <td><span class="status-badge ${getStatusClass(cluster.state)}">${escapeHtml(cluster.state)}</span></td>
                 ` + "`" + `;
-                clusterList.appendChild(div);
+                if (isActive) tr.classList.add('selected');
+                tbody.appendChild(tr);
             });
 
-            updateGenerateButton();
             updateSelectAll();
+            updateSelectionStatus();
         }
 
         function escapeHtml(text) {
@@ -886,46 +1103,44 @@ const indexHTML = `<!DOCTYPE html>
             return div.innerHTML;
         }
 
+        function onClusterSelect(index) {
+            const checkbox = document.getElementById('cluster-' + index);
+            const row = checkbox.closest('tr');
+            row.classList.toggle('selected', checkbox.checked);
+            updateSelectAll();
+            updateSelectionStatus();
+        }
+
         function toggleSelectAll() {
             const selectAll = document.getElementById('selectAll').checked;
             clusters.forEach((cluster, index) => {
-                const checkbox = document.getElementById('cluster-' + index);
-                if (checkbox && cluster.state === 'active') {
+                if (cluster.state === 'active') {
+                    const checkbox = document.getElementById('cluster-' + index);
                     checkbox.checked = selectAll;
+                    checkbox.closest('tr').classList.toggle('selected', selectAll);
                 }
             });
-            updateGenerateButton();
+            updateSelectionStatus();
         }
 
         function updateSelectAll() {
             const activeClusters = clusters.filter(c => c.state === 'active');
-            const checkedCount = activeClusters.filter((c, i) => {
-                const checkbox = document.getElementById('cluster-' + clusters.indexOf(c));
-                return checkbox && checkbox.checked;
+            const checkedCount = activeClusters.filter((_, i) => {
+                const idx = clusters.indexOf(activeClusters[i]);
+                const cb = document.getElementById('cluster-' + clusters.findIndex(c => c === activeClusters[i]));
+                return cb && cb.checked;
             }).length;
             document.getElementById('selectAll').checked = checkedCount === activeClusters.length && activeClusters.length > 0;
         }
 
-        function updateGenerateButton() {
-            const selectedCount = getSelectedClusters().length;
-            document.getElementById('generateBtn').disabled = selectedCount === 0;
-            updateSelectAll();
-        }
-
         function getSelectedClusters() {
-            const selected = [];
-            clusters.forEach((cluster, index) => {
-                const checkbox = document.getElementById('cluster-' + index);
-                if (checkbox && checkbox.checked) {
-                    selected.push(cluster.name);
-                }
-            });
-            return selected;
+            return clusters.filter((cluster, index) => {
+                const cb = document.getElementById('cluster-' + index);
+                return cb && cb.checked;
+            }).map(c => c.name);
         }
 
         async function generateKubeconfig() {
-            hideAlerts();
-
             const rancherUrl = document.getElementById('rancherUrl').value.trim();
             const clusterPrefix = document.getElementById('clusterPrefix').value;
             const insecureSkipTls = document.getElementById('insecureSkipTls').checked;
@@ -933,38 +1148,31 @@ const indexHTML = `<!DOCTYPE html>
             const creds = getAuthCredentials();
 
             if (selectedClusters.length === 0) {
-                showError('Please select at least one cluster');
+                showToast('Please select at least one cluster', 'error');
                 return;
             }
 
-            const generateBtn = document.getElementById('generateBtn');
-            generateBtn.disabled = true;
-            generateBtn.textContent = 'Generating...';
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Generating...';
 
             try {
                 const response = await fetch('/api/generate', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        rancherUrl: rancherUrl,
-                        token: creds.token,
-                        username: creds.username,
-                        password: creds.password,
-                        clusterPrefix: clusterPrefix,
-                        insecureSkipTlsVerify: insecureSkipTls,
-                        selectedClusters: selectedClusters,
-                    }),
+                        rancherUrl, token: creds.token, username: creds.username,
+                        password: creds.password, clusterPrefix, insecureSkipTlsVerify: insecureSkipTls,
+                        selectedClusters
+                    })
                 });
 
                 if (response.headers.get('Content-Type')?.includes('application/json')) {
                     const result = await response.json();
-                    showError(result.error || 'Failed to generate kubeconfig');
+                    showToast(result.error || 'Generation failed', 'error');
                     return;
                 }
 
-                // Download the file
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -975,14 +1183,14 @@ const indexHTML = `<!DOCTYPE html>
                 window.URL.revokeObjectURL(url);
                 a.remove();
 
-                showSuccess('Kubeconfig generated and downloaded successfully!');
+                showToast('Kubeconfig downloaded successfully!', 'success');
 
             } catch (error) {
-                showError('Failed to generate kubeconfig: ' + error.message);
+                showToast('Failed to generate: ' + error.message, 'error');
             } finally {
-                generateBtn.disabled = false;
-                generateBtn.textContent = 'Generate Kubeconfig';
-                updateGenerateButton();
+                btn.disabled = false;
+                btn.textContent = '⬇ Generate Kubeconfig';
+                updateSelectionStatus();
             }
         }
     </script>
