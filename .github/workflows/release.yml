@@ -98,6 +98,12 @@ jobs:
     name: Build CLI (macOS)
     runs-on: macos-latest
     needs: create-release
+    env:
+      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
     strategy:
       matrix:
         goarch: [amd64, arm64]
@@ -110,10 +116,7 @@ jobs:
           go-version: '1.21'
 
       - name: Import Code Signing Certificate
-        if: env.APPLE_CERTIFICATE != ''
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        if: ${{ env.APPLE_CERTIFICATE != '' }}
         run: |
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
           KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
@@ -138,18 +141,14 @@ jobs:
             -o bin/rancher-kubeconfig-proxy-darwin-${{ matrix.goarch }} .
 
       - name: Sign Binary
-        if: env.SIGNING_IDENTITY != ''
+        if: ${{ env.SIGNING_IDENTITY != '' }}
         run: |
           codesign --force --options runtime --sign "$SIGNING_IDENTITY" \
             bin/rancher-kubeconfig-proxy-darwin-${{ matrix.goarch }}
           codesign --verify --verbose bin/rancher-kubeconfig-proxy-darwin-${{ matrix.goarch }}
 
       - name: Notarize Binary
-        if: env.APPLE_ID != ''
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        if: ${{ env.APPLE_ID != '' && env.SIGNING_IDENTITY != '' }}
         run: |
           # Zip the binary for notarization
           cd bin
@@ -158,7 +157,7 @@ jobs:
           # Submit for notarization
           xcrun notarytool submit rancher-kubeconfig-proxy-darwin-${{ matrix.goarch }}.zip \
             --apple-id "$APPLE_ID" \
-            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --password "$APPLE_ID_PASSWORD" \
             --team-id "$APPLE_TEAM_ID" \
             --wait || echo "Notarization failed, continuing..."
 
@@ -235,6 +234,12 @@ jobs:
     name: Build Electron (macOS)
     runs-on: macos-latest
     needs: create-release
+    env:
+      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
     steps:
       - uses: actions/checkout@v4
 
@@ -256,10 +261,7 @@ jobs:
             -o bin/mac/rancher-kubeconfig-proxy .
 
       - name: Import Code Signing Certificate
-        if: env.APPLE_CERTIFICATE != ''
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        if: ${{ env.APPLE_CERTIFICATE != '' }}
         run: |
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
           KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
@@ -284,19 +286,15 @@ jobs:
           CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
 
       - name: Notarize DMG
-        if: env.APPLE_ID != ''
+        if: ${{ env.APPLE_ID != '' && env.APPLE_CERTIFICATE != '' }}
         working-directory: electron
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           DMG_PATH=$(find dist -name "*.dmg" -type f | head -1)
           if [ -n "$DMG_PATH" ]; then
             echo "Notarizing $DMG_PATH..."
             xcrun notarytool submit "$DMG_PATH" \
               --apple-id "$APPLE_ID" \
-              --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+              --password "$APPLE_ID_PASSWORD" \
               --team-id "$APPLE_TEAM_ID" \
               --wait || echo "Notarization failed, continuing..."
             xcrun stapler staple "$DMG_PATH" || echo "Stapling failed, continuing..."
