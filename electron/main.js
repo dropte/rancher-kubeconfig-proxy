@@ -22,25 +22,30 @@ async function findAvailablePort(startPort) {
   });
 }
 
+// Map Node.js platform names to electron-builder directory names
+function getPlatformDir() {
+  switch (process.platform) {
+    case 'darwin':
+      return 'mac';
+    case 'win32':
+      return 'win';
+    default:
+      return 'linux';
+  }
+}
+
 // Get the path to the backend binary
 function getBackendPath() {
   const isDev = !app.isPackaged;
+  const isWindows = process.platform === 'win32';
+  const binaryName = isWindows ? 'rancher-kubeconfig-proxy.exe' : 'rancher-kubeconfig-proxy';
 
   if (isDev) {
     // In development, look for the binary in the parent bin directory
-    const platform = process.platform;
-    let binaryName = 'rancher-kubeconfig-proxy';
-    if (platform === 'win32') {
-      binaryName += '.exe';
-    }
-    return path.join(__dirname, '..', 'bin', platform, binaryName);
+    const platformDir = getPlatformDir();
+    return path.join(__dirname, '..', 'bin', platformDir, binaryName);
   } else {
     // In production, look in the resources directory
-    const platform = process.platform;
-    let binaryName = 'rancher-kubeconfig-proxy';
-    if (platform === 'win32') {
-      binaryName += '.exe';
-    }
     return path.join(process.resourcesPath, 'bin', binaryName);
   }
 }
@@ -52,9 +57,10 @@ async function startBackend() {
   // Check if the backend binary exists
   if (!fs.existsSync(backendPath)) {
     console.error('Backend binary not found at:', backendPath);
+    const platformDir = getPlatformDir();
     dialog.showErrorBox(
       'Backend Not Found',
-      `The backend server binary was not found at:\n${backendPath}\n\nPlease build the Go backend first using:\ngo build -o bin/${process.platform}/rancher-kubeconfig-proxy`
+      `The backend server binary was not found at:\n${backendPath}\n\nPlease build the Go backend first using:\ngo build -o bin/${platformDir}/rancher-kubeconfig-proxy`
     );
     return false;
   }

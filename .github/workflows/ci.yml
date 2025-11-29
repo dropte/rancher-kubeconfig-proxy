@@ -116,22 +116,30 @@ jobs:
           cache: 'npm'
           cache-dependency-path: electron/package-lock.json
 
-      - name: Build Go backend (Linux/macOS)
-        if: matrix.platform != 'windows'
+      - name: Build Go backend (Linux)
+        if: matrix.platform == 'linux'
         run: |
-          mkdir -p bin/${{ matrix.platform }}
-          GOOS=${{ matrix.platform }} GOARCH=${{ matrix.goarch }} \
+          mkdir -p bin/linux
+          GOOS=linux GOARCH=${{ matrix.goarch }} \
             go build -ldflags "-X github.com/rancher-kubeconfig-proxy/cmd.Version=${{ github.sha }}" \
-            -o bin/${{ matrix.platform }}/rancher-kubeconfig-proxy .
+            -o bin/linux/rancher-kubeconfig-proxy .
+
+      - name: Build Go backend (macOS)
+        if: matrix.platform == 'darwin'
+        run: |
+          mkdir -p bin/mac
+          GOOS=darwin GOARCH=${{ matrix.goarch }} \
+            go build -ldflags "-X github.com/rancher-kubeconfig-proxy/cmd.Version=${{ github.sha }}" \
+            -o bin/mac/rancher-kubeconfig-proxy .
 
       - name: Build Go backend (Windows)
         if: matrix.platform == 'windows'
         shell: bash
         run: |
-          mkdir -p bin/win32
+          mkdir -p bin/win
           GOOS=windows GOARCH=${{ matrix.goarch }} \
             go build -ldflags "-X github.com/rancher-kubeconfig-proxy/cmd.Version=${{ github.sha }}" \
-            -o bin/win32/rancher-kubeconfig-proxy.exe .
+            -o bin/win/rancher-kubeconfig-proxy.exe .
 
       - name: Install Electron dependencies
         working-directory: electron
@@ -144,12 +152,40 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Import Code Signing Certificate (macOS)
+        if: matrix.platform == 'darwin' && env.APPLE_CERTIFICATE != ''
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          # Create a temporary keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+
+          # Create keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import certificate
+          echo "$APPLE_CERTIFICATE" | base64 --decode > $RUNNER_TEMP/certificate.p12
+          security import $RUNNER_TEMP/certificate.p12 -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+          # Allow codesign to access the certificate
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
       - name: Build Electron app (macOS)
         if: matrix.platform == 'darwin'
         working-directory: electron
         run: npm run build:mac
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_LINK: ${{ secrets.APPLE_CERTIFICATE }}
+          CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
 
       - name: Build Electron app (Windows)
         if: matrix.platform == 'windows'
