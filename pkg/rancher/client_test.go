@@ -76,7 +76,7 @@ func TestNewClient_PasswordAuth(t *testing.T) {
 				UserID: "user-abc",
 			}
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(resp)
+			_ = json.NewEncoder(w).Encode(resp)
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -104,7 +104,7 @@ func TestNewClient_PasswordAuthFailure(t *testing.T) {
 	// Create a test server that rejects login
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"message": "invalid credentials"}`))
+		_, _ = w.Write([]byte(`{"message": "invalid credentials"}`))
 	}))
 	defer server.Close()
 
@@ -147,7 +147,7 @@ func TestClient_ListClusters(t *testing.T) {
 
 		if r.URL.Path == "/v3/clusters" && r.Method == "GET" {
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(ClusterCollection{Data: clusters})
+			_ = json.NewEncoder(w).Encode(ClusterCollection{Data: clusters})
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -185,7 +185,7 @@ func TestClient_ListClusters(t *testing.T) {
 func TestClient_ListClusters_Unauthorized(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"message": "unauthorized"}`))
+		_, _ = w.Write([]byte(`{"message": "unauthorized"}`))
 	}))
 	defer server.Close()
 
@@ -196,8 +196,11 @@ func TestClient_ListClusters_Unauthorized(t *testing.T) {
 		AuthMethod: config.AuthMethodToken,
 	}
 
-	client, _ := NewClient(cfg)
-	_, err := client.ListClusters()
+	client, err := NewClient(cfg)
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+	_, err = client.ListClusters()
 	if err == nil {
 		t.Error("expected error for unauthorized request")
 	}
@@ -214,7 +217,7 @@ func TestClient_GetClusterKubeconfig(t *testing.T) {
 
 		if r.URL.Path == "/v3/clusters/c-12345" && r.URL.Query().Get("action") == "generateKubeconfig" {
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(KubeconfigResponse{Config: testKubeconfig})
+			_ = json.NewEncoder(w).Encode(KubeconfigResponse{Config: testKubeconfig})
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -251,7 +254,7 @@ func TestClient_GetClusterKubeconfig_WithActionURL(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v3/clusters/c-12345/generateKubeconfig" {
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(KubeconfigResponse{Config: testKubeconfig})
+			_ = json.NewEncoder(w).Encode(KubeconfigResponse{Config: testKubeconfig})
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -265,7 +268,10 @@ func TestClient_GetClusterKubeconfig_WithActionURL(t *testing.T) {
 		AuthMethod: config.AuthMethodToken,
 	}
 
-	client, _ := NewClient(cfg)
+	client, err := NewClient(cfg)
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
 
 	cluster := &Cluster{
 		ID:   "c-12345",
@@ -309,13 +315,13 @@ func TestClient_GetAllKubeconfigs(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v3/clusters" && r.Method == "GET" {
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(ClusterCollection{Data: clusters})
+			_ = json.NewEncoder(w).Encode(ClusterCollection{Data: clusters})
 			return
 		}
 
 		if r.Method == "POST" && r.URL.Query().Get("action") == "generateKubeconfig" {
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(KubeconfigResponse{Config: testKubeconfig})
+			_ = json.NewEncoder(w).Encode(KubeconfigResponse{Config: testKubeconfig})
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -329,7 +335,10 @@ func TestClient_GetAllKubeconfigs(t *testing.T) {
 		AuthMethod: config.AuthMethodToken,
 	}
 
-	client, _ := NewClient(cfg)
+	client, err := NewClient(cfg)
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
 
 	kubeconfigs, err := client.GetAllKubeconfigs()
 	if err != nil {
@@ -356,7 +365,7 @@ func TestClient_GetAllKubeconfigs_NoClusters(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v3/clusters" {
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(ClusterCollection{Data: []Cluster{}})
+			_ = json.NewEncoder(w).Encode(ClusterCollection{Data: []Cluster{}})
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -370,7 +379,10 @@ func TestClient_GetAllKubeconfigs_NoClusters(t *testing.T) {
 		AuthMethod: config.AuthMethodToken,
 	}
 
-	client, _ := NewClient(cfg)
+	client, err := NewClient(cfg)
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
 
 	kubeconfigs, err := client.GetAllKubeconfigs()
 	if err != nil {
@@ -393,7 +405,7 @@ func TestClient_BearerTokenAuth(t *testing.T) {
 
 		if r.URL.Path == "/v3/clusters" {
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(ClusterCollection{Data: []Cluster{}})
+			_ = json.NewEncoder(w).Encode(ClusterCollection{Data: []Cluster{}})
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)

@@ -3,8 +3,16 @@
   "version": "1.0.0",
   "description": "Generate kubeconfig files from Rancher managed clusters",
   "main": "main.js",
-  "author": "Rancher Kubeconfig Proxy",
+  "author": {
+    "name": "Rancher Kubeconfig Proxy",
+    "email": "noreply@example.com"
+  },
   "license": "MIT",
+  "homepage": "https://github.com/dropte/rancher-kubeconfig-proxy",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dropte/rancher-kubeconfig-proxy.git"
+  },
   "scripts": {
     "start": "electron .",
     "build": "electron-builder",
@@ -17,6 +25,7 @@
     "electron-store": "^8.1.0"
   },
   "devDependencies": {
+    "@electron/notarize": "^2.2.1",
     "electron": "^28.0.0",
     "electron-builder": "^24.9.1"
   },
@@ -44,7 +53,12 @@
     "mac": {
       "category": "public.app-category.developer-tools",
       "target": ["dmg", "zip"],
-      "icon": "build/icon.icns"
+      "icon": "build/icon.icns",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "notarize": false
     },
     "win": {
       "target": ["nsis", "portable"],
@@ -53,7 +67,8 @@
     "linux": {
       "target": ["AppImage", "deb", "rpm"],
       "category": "Development",
-      "icon": "build/icons"
+      "icon": "build/icons",
+      "maintainer": "noreply@example.com"
     },
     "nsis": {
       "oneClick": false,
