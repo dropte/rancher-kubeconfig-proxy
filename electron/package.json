@@ -25,6 +25,7 @@
     "electron-store": "^8.1.0"
   },
   "devDependencies": {
+    "@electron/notarize": "^2.2.1",
     "electron": "^28.0.0",
     "electron-builder": "^24.9.1"
   },
@@ -56,11 +57,9 @@
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist",
-      "notarize": {
-        "teamId": "${env.APPLE_TEAM_ID}"
-      }
+      "entitlementsInherit": "build/entitlements.mac.plist"
     },
+    "afterSign": "scripts/notarize.js",
     "win": {
       "target": ["nsis", "portable"],
       "icon": "build/icon.ico"
