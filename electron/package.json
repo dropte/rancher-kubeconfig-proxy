@@ -55,10 +55,7 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
-      "target": [
-        "dmg",
-        "zip"
-      ],
+      "target": "dmg",
       "icon": "build/icon.icns",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
@@ -67,10 +64,7 @@
       "notarize": false
     },
     "win": {
-      "target": [
-        "nsis",
-        "portable"
-      ],
+      "target": "nsis",
       "icon": "build/icon.ico"
     },
     "linux": {
