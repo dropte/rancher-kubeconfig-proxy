@@ -1,9 +1,10 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, nativeImage, powerMonitor } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, nativeImage, powerMonitor, Menu } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const net = require('net');
 const crypto = require('crypto');
+const { autoUpdater } = require('electron-updater');
 
 // Set app name for development
 app.setName('Kubeconfig Wrangler');
@@ -310,4 +311,212 @@ powerMonitor.on('unlock-screen', () => {
         mainWindow.reload();
       });
   }
+});
+
+// ============================================
+// Auto-updater configuration and event handlers
+// ============================================
+
+// Configure auto-updater
+autoUpdater.autoDownload = false; // Don't download automatically, let user decide
+autoUpdater.autoInstallOnAppQuit = true;
+
+// Auto-updater event handlers
+autoUpdater.on('checking-for-update', () => {
+  console.log('Checking for updates...');
+});
+
+autoUpdater.on('update-available', (info) => {
+  console.log('Update available:', info.version);
+
+  dialog.showMessageBox(mainWindow, {
+    type: 'info',
+    title: 'Update Available',
+    message: `A new version (${info.version}) is available.`,
+    detail: 'Would you like to download and install it now?',
+    buttons: ['Download', 'Later'],
+    defaultId: 0,
+    cancelId: 1
+  }).then(({ response }) => {
+    if (response === 0) {
+      autoUpdater.downloadUpdate();
+    }
+  });
+});
+
+autoUpdater.on('update-not-available', (info) => {
+  console.log('No update available, current version:', info.version);
+});
+
+autoUpdater.on('error', (err) => {
+  console.error('Auto-updater error:', err);
+});
+
+autoUpdater.on('download-progress', (progressObj) => {
+  const percent = Math.round(progressObj.percent);
+  console.log(`Download progress: ${percent}%`);
+
+  // Update window title to show progress
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.setTitle(`Kubeconfig Wrangler - Downloading update ${percent}%`);
+  }
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+  console.log('Update downloaded:', info.version);
+
+  // Reset window title
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.setTitle('Kubeconfig Wrangler');
+  }
+
+  dialog.showMessageBox(mainWindow, {
+    type: 'info',
+    title: 'Update Ready',
+    message: 'Update downloaded successfully!',
+    detail: 'The application will restart to apply the update.',
+    buttons: ['Restart Now', 'Later'],
+    defaultId: 0,
+    cancelId: 1
+  }).then(({ response }) => {
+    if (response === 0) {
+      stopBackend();
+      autoUpdater.quitAndInstall();
+    }
+  });
+});
+
+// Check for updates function
+function checkForUpdates(silent = false) {
+  if (app.isPackaged) {
+    autoUpdater.checkForUpdates().catch(err => {
+      if (!silent) {
+        console.error('Failed to check for updates:', err);
+      }
+    });
+  } else {
+    console.log('Skipping update check in development mode');
+    if (!silent) {
+      dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        title: 'Development Mode',
+        message: 'Update checking is disabled in development mode.'
+      });
+    }
+  }
+}
+
+// IPC handler for manual update check
+ipcMain.handle('check-for-updates', async () => {
+  checkForUpdates(false);
+});
+
+// IPC handler to get current version
+ipcMain.handle('get-app-version', () => {
+  return app.getVersion();
+});
+
+// Create application menu with update option
+function createAppMenu() {
+  const isMac = process.platform === 'darwin';
+
+  const template = [
+    ...(isMac ? [{
+      label: app.name,
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        {
+          label: 'Check for Updates...',
+          click: () => checkForUpdates(false)
+        },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' }
+      ]
+    }] : []),
+    {
+      label: 'File',
+      submenu: [
+        isMac ? { role: 'close' } : { role: 'quit' }
+      ]
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' }
+      ]
+    },
+    {
+      label: 'Window',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'zoom' },
+        ...(isMac ? [
+          { type: 'separator' },
+          { role: 'front' }
+        ] : [
+          { role: 'close' }
+        ])
+      ]
+    },
+    {
+      label: 'Help',
+      submenu: [
+        ...(!isMac ? [{
+          label: 'Check for Updates...',
+          click: () => checkForUpdates(false)
+        }, { type: 'separator' }] : []),
+        {
+          label: 'About Kubeconfig Wrangler',
+          click: async () => {
+            dialog.showMessageBox(mainWindow, {
+              type: 'info',
+              title: 'About Kubeconfig Wrangler',
+              message: 'Kubeconfig Wrangler',
+              detail: `Version: ${app.getVersion()}\n\nManage kubeconfigs from multiple sources including Rancher and AWS EKS.`
+            });
+          }
+        }
+      ]
+    }
+  ];
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
+
+// Initialize menu when app is ready (add to existing whenReady)
+app.whenReady().then(() => {
+  createAppMenu();
+
+  // Check for updates silently on startup (after a short delay)
+  setTimeout(() => {
+    checkForUpdates(true);
+  }, 5000);
 });
