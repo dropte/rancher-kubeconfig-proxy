@@ -206,33 +206,11 @@ jobs:
         working-directory: electron
         run: npm ci
 
-      - name: Build Electron app
+      - name: Build and Publish Electron app
         working-directory: electron
-        run: npm run build:linux
+        run: npm run build:linux -- --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload AppImage
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: electron/dist/Kubeconfig Wrangler-${{ needs.create-release.outputs.version }}.AppImage
-          asset_name: Kubeconfig-Wrangler-${{ needs.create-release.outputs.version }}.AppImage
-          asset_content_type: application/octet-stream
-        continue-on-error: true
-
-      - name: Upload deb
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: electron/dist/kubeconfig-wrangler_${{ needs.create-release.outputs.version }}_amd64.deb
-          asset_name: kubeconfig-wrangler_${{ needs.create-release.outputs.version }}_amd64.deb
-          asset_content_type: application/vnd.debian.binary-package
-        continue-on-error: true
 
   build-electron-macos:
     name: Build Electron (macOS)
@@ -308,7 +286,33 @@ jobs:
             xcrun stapler staple "$DMG_PATH" || echo "Stapling failed, continuing..."
           fi
 
-      - name: Upload DMG
+      - name: Generate latest-mac.yml for auto-updater
+        working-directory: electron
+        run: |
+          DMG_PATH=$(find dist -name "*.dmg" -type f | head -1)
+          ZIP_PATH=$(find dist -name "*.zip" -type f | head -1)
+          VERSION=${{ needs.create-release.outputs.version }}
+
+          if [ -n "$DMG_PATH" ]; then
+            DMG_NAME=$(basename "$DMG_PATH")
+            DMG_SHA512=$(shasum -a 512 "$DMG_PATH" | awk '{print $1}' | xxd -r -p | base64)
+            DMG_SIZE=$(stat -f%z "$DMG_PATH")
+
+            cat > dist/latest-mac.yml << EOF
+          version: ${VERSION}
+          files:
+            - url: ${DMG_NAME}
+              sha512: ${DMG_SHA512}
+              size: ${DMG_SIZE}
+          path: ${DMG_NAME}
+          sha512: ${DMG_SHA512}
+          releaseDate: $(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
+          EOF
+            echo "Generated latest-mac.yml:"
+            cat dist/latest-mac.yml
+          fi
+
+      - name: Upload DMG to Release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -317,6 +321,17 @@ jobs:
           asset_path: electron/dist/Kubeconfig Wrangler-${{ needs.create-release.outputs.version }}.dmg
           asset_name: Kubeconfig-Wrangler-${{ needs.create-release.outputs.version }}.dmg
           asset_content_type: application/octet-stream
+        continue-on-error: true
+
+      - name: Upload latest-mac.yml for auto-updater
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: electron/dist/latest-mac.yml
+          asset_name: latest-mac.yml
+          asset_content_type: text/yaml
         continue-on-error: true
 
   build-electron-windows:
@@ -352,19 +367,8 @@ jobs:
         working-directory: electron
         run: npm ci
 
-      - name: Build Electron app
+      - name: Build and Publish Electron app
         working-directory: electron
-        run: npm run build:win
+        run: npm run build:win -- --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload Windows Installer
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: electron/dist/Kubeconfig Wrangler Setup ${{ needs.create-release.outputs.version }}.exe
-          asset_name: Kubeconfig-Wrangler-Setup-${{ needs.create-release.outputs.version }}.exe
-          asset_content_type: application/octet-stream
-        continue-on-error: true
