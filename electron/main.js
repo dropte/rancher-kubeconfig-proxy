@@ -13,6 +13,11 @@ let mainWindow;
 let backendProcess;
 let serverPort = 18080;
 let serverToken = '';
+let isQuitting = false;
+let healthCheckInterval = null;
+let restartAttempts = 0;
+const MAX_RESTART_ATTEMPTS = 3;
+const HEALTH_CHECK_INTERVAL = 5000; // 5 seconds
 
 // Generate a cryptographically secure random token
 function generateSecurityToken() {
@@ -111,6 +116,12 @@ async function startBackend() {
     backendProcess.on('close', (code) => {
       console.log('Backend process exited with code', code);
       backendProcess = null;
+
+      // Auto-restart if not quitting
+      if (!isQuitting && code !== 0) {
+        console.log('Backend crashed unexpectedly, will attempt restart...');
+        restartBackend();
+      }
     });
 
     // Timeout in case the server doesn't output the expected message
@@ -120,11 +131,115 @@ async function startBackend() {
 
 // Stop the backend server
 function stopBackend() {
+  stopHealthCheck();
   if (backendProcess) {
     console.log('Stopping backend server...');
     backendProcess.kill();
     backendProcess = null;
   }
+}
+
+// Health check function
+async function checkBackendHealth() {
+  return new Promise((resolve) => {
+    const http = require('http');
+    const req = http.request({
+      hostname: '127.0.0.1',
+      port: serverPort,
+      path: '/',
+      method: 'GET',
+      timeout: 3000
+    }, (res) => {
+      resolve(res.statusCode === 200);
+    });
+
+    req.on('error', () => resolve(false));
+    req.on('timeout', () => {
+      req.destroy();
+      resolve(false);
+    });
+    req.end();
+  });
+}
+
+// Start health check monitoring
+function startHealthCheck() {
+  stopHealthCheck();
+
+  healthCheckInterval = setInterval(async () => {
+    if (isQuitting || !backendProcess) return;
+
+    const isHealthy = await checkBackendHealth();
+
+    if (!isHealthy) {
+      console.log('Backend health check failed');
+
+      // Check if the process is actually running
+      if (!backendProcess) {
+        console.log('Backend process not running, attempting restart...');
+        await restartBackend();
+      } else {
+        // Process is running but not responding - might be hung
+        console.log('Backend process running but not responding');
+        // Give it one more chance
+        const secondCheck = await checkBackendHealth();
+        if (!secondCheck) {
+          console.log('Backend still not responding, restarting...');
+          await restartBackend();
+        }
+      }
+    } else {
+      // Reset restart attempts on successful health check
+      restartAttempts = 0;
+    }
+  }, HEALTH_CHECK_INTERVAL);
+}
+
+// Stop health check monitoring
+function stopHealthCheck() {
+  if (healthCheckInterval) {
+    clearInterval(healthCheckInterval);
+    healthCheckInterval = null;
+  }
+}
+
+// Restart backend with retry logic
+async function restartBackend() {
+  if (isQuitting) return false;
+
+  if (restartAttempts >= MAX_RESTART_ATTEMPTS) {
+    console.error('Max restart attempts reached, giving up');
+    dialog.showErrorBox(
+      'Backend Error',
+      'The backend server has crashed multiple times and cannot be restarted. Please restart the application.'
+    );
+    return false;
+  }
+
+  restartAttempts++;
+  console.log(`Attempting to restart backend (attempt ${restartAttempts}/${MAX_RESTART_ATTEMPTS})...`);
+
+  // Kill the existing process if it's still around
+  if (backendProcess) {
+    try {
+      backendProcess.kill('SIGKILL');
+    } catch (e) {
+      // Ignore errors killing the process
+    }
+    backendProcess = null;
+  }
+
+  // Wait a moment before restarting
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  const success = await startBackend();
+
+  if (success && mainWindow && !mainWindow.isDestroyed()) {
+    console.log('Backend restarted successfully, reloading window...');
+    mainWindow.loadURL(`http://127.0.0.1:${serverPort}`);
+  }
+
+  return success;
 }
 
 // Create the main window
@@ -259,6 +374,9 @@ app.whenReady().then(async () => {
     return;
   }
 
+  // Start health monitoring
+  startHealthCheck();
+
   createWindow();
 
   app.on('activate', () => {
@@ -269,6 +387,7 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
+  isQuitting = true;
   stopBackend();
   if (process.platform !== 'darwin') {
     app.quit();
@@ -276,23 +395,30 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  isQuitting = true;
   stopBackend();
 });
 
 app.on('will-quit', () => {
+  isQuitting = true;
   stopBackend();
 });
 
 // Handle system power events
-powerMonitor.on('resume', () => {
+powerMonitor.on('resume', async () => {
   console.log('System resumed from sleep');
-  // Give the network a moment to reconnect, then reload
-  setTimeout(() => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      console.log('Reloading window after resume...');
-      mainWindow.reload();
-    }
-  }, 1500);
+  // Give the network a moment to reconnect
+  await new Promise(resolve => setTimeout(resolve, 1500));
+
+  // Check backend health and restart if needed
+  const isHealthy = await checkBackendHealth();
+  if (!isHealthy) {
+    console.log('Backend not responding after resume, restarting...');
+    await restartBackend();
+  } else if (mainWindow && !mainWindow.isDestroyed()) {
+    console.log('Backend healthy, reloading window after resume...');
+    mainWindow.reload();
+  }
 });
 
 powerMonitor.on('unlock-screen', () => {
