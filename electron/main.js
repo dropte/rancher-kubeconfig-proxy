@@ -476,6 +476,7 @@ autoUpdater.on('update-not-available', (info) => {
 
 autoUpdater.on('error', (err) => {
   console.error('Auto-updater error:', err);
+  dialog.showErrorBox('Update Error', `Failed to update: ${err.message}`);
 });
 
 autoUpdater.on('download-progress', (progressObj) => {

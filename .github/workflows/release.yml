@@ -295,27 +295,55 @@ jobs:
         working-directory: electron
         run: |
           DMG_PATH=$(find dist -name "*.dmg" -type f | head -1)
-          ZIP_PATH=$(find dist -name "*.zip" -type f | head -1)
+          ZIP_PATH=$(find dist -name "*-mac.zip" -type f | head -1)
           VERSION=${{ needs.create-release.outputs.version }}
 
-          if [ -n "$DMG_PATH" ]; then
-            DMG_NAME=$(basename "$DMG_PATH")
-            DMG_SHA512=$(shasum -a 512 "$DMG_PATH" | awk '{print $1}' | xxd -r -p | base64)
-            DMG_SIZE=$(stat -f%z "$DMG_PATH")
+          if [ -n "$ZIP_PATH" ]; then
+            ZIP_NAME=$(basename "$ZIP_PATH")
+            ZIP_SHA512=$(shasum -a 512 "$ZIP_PATH" | awk '{print $1}' | xxd -r -p | base64)
+            ZIP_SIZE=$(stat -f%z "$ZIP_PATH")
 
+            # Start with ZIP as primary (required for auto-update)
             cat > dist/latest-mac.yml << EOF
           version: ${VERSION}
           files:
+            - url: ${ZIP_NAME}
+              sha512: ${ZIP_SHA512}
+              size: ${ZIP_SIZE}
+          EOF
+
+            # Add DMG as secondary option if it exists
+            if [ -n "$DMG_PATH" ]; then
+              DMG_NAME=$(basename "$DMG_PATH")
+              DMG_SHA512=$(shasum -a 512 "$DMG_PATH" | awk '{print $1}' | xxd -r -p | base64)
+              DMG_SIZE=$(stat -f%z "$DMG_PATH")
+              cat >> dist/latest-mac.yml << EOF
             - url: ${DMG_NAME}
               sha512: ${DMG_SHA512}
               size: ${DMG_SIZE}
-          path: ${DMG_NAME}
-          sha512: ${DMG_SHA512}
+          EOF
+            fi
+
+            # ZIP is the primary path for auto-updates
+            cat >> dist/latest-mac.yml << EOF
+          path: ${ZIP_NAME}
+          sha512: ${ZIP_SHA512}
           releaseDate: $(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
           EOF
             echo "Generated latest-mac.yml:"
             cat dist/latest-mac.yml
           fi
+
+      - name: Upload ZIP to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: electron/dist/Kubeconfig Wrangler-${{ needs.create-release.outputs.version }}-arm64-mac.zip
+          asset_name: Kubeconfig-Wrangler-${{ needs.create-release.outputs.version }}-arm64-mac.zip
+          asset_content_type: application/zip
+        continue-on-error: true
 
       - name: Upload DMG to Release
         uses: actions/upload-release-asset@v1

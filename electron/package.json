@@ -55,7 +55,7 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
-      "target": "dmg",
+      "target": ["dmg", "zip"],
       "icon": "build/icon.icns",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
